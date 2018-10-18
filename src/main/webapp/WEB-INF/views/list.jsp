@@ -58,7 +58,7 @@
                         <th>
                             <button class="btn-primary btn-sm">
                                 <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span>
-                                新增
+                                编辑
                             </button>
                             <button class="btn-danger btn-sm">
                                 <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>

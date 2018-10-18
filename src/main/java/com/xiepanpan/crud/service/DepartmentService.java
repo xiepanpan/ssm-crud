@@ -1,7 +1,7 @@
 package com.xiepanpan.crud.service;
 
-import com.xiepanpan.crud.bean.Employee;
-import com.xiepanpan.crud.dao.EmployeeMapper;
+import com.xiepanpan.crud.bean.Department;
+import com.xiepanpan.crud.dao.DepartmentMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,12 +14,14 @@ import java.util.List;
  * @date 2018/10/16
  */
 @Service
-public class EmployeeService {
+public class DepartmentService {
 
     @Autowired
-    EmployeeMapper employeeMapper;
+    DepartmentMapper departmentMapper;
 
-    public List<Employee> getAll() {
-        return employeeMapper.selectByExampleWithDept(null);
+
+    public List<Department> getDepts() {
+        List<Department> list = departmentMapper.selectByExample(null);
+        return list;
     }
 }
