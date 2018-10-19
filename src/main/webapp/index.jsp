@@ -37,13 +37,15 @@
                     <div class="form-group">
                         <label class="col-sm-2 control-label">empName</label>
                         <div class="col-sm-10">
-                            <input type="text" class="form-control" id="emp_add_input" placeholder="empName">
+                            <input type="text" name="empName" class="form-control" id="emp_add_input" placeholder="empName">
+                            <span class="help-block"></span>
                         </div>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-2 control-label">email</label>
                         <div class="col-sm-10">
-                            <input type="text" class="form-control" id="email_add_input" placeholder="aa@xiepanpan.com">
+                            <input type="text" name="email" class="form-control" id="email_add_input" placeholder="aa@xiepanpan.com">
+                            <span class="help-block"></span>
                         </div>
                     </div>
                     <div class="form-group">
@@ -70,7 +72,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
-                <button type="button" class="btn btn-primary">保存</button>
+                <button type="button" class="btn btn-primary" id="emp_save_btn">保存</button>
             </div>
         </div>
     </div>
@@ -124,6 +126,7 @@
     </div>
 </div>
 <script type="text/javascript">
+    var totalRecord;
     $(function () {
         //首页
         to_page(1);
@@ -172,7 +175,8 @@
         $("#page_info_area").empty();
         $("#page_info_area").append("当前" + result.extend.pageInfo.pageNum + "页,总" +
             result.extend.pageInfo.pages + "页,总" +
-            result.extend.pageInfo.total + "条记录")
+            result.extend.pageInfo.total + "条记录");
+        totalRecord=result.extend.pageInfo.total;
     }
 
     function build_page_nav(result) {
@@ -222,7 +226,17 @@
         var navEle = $("<nav></nav>").append(ul);
         navEle.appendTo("#page_nav_area");
     }
+    
+    //清空表单样式和内容
+    function reset_form(ele) {
+        $(ele)[0].reset();
+        //清空表单样式
+        $(ele).find("*").removeClass("has-error has-success");
+        $(ele).find(".help-block").text("");
+    }
     $("#emp_add_modal_btn").click(function () {
+        //重置表单
+        reset_form("#empAddModal form");
         //发送ajax请求 查出部门信息 显示在下拉列表中
         getDepts();
 
@@ -247,6 +261,88 @@
             }
         });
     }
+
+    //校验表单数据
+    function validate_add_form() {
+        //校验用户名
+        var empName =$("#emp_add_input").val();
+        //a-z A-Z 0-9 _ - 6到16个字符 可以为中文 括号分开 |表示或者
+        var regName = /(^[a-zA-Z0-9_-]{6,16}$)|(^[\u2E80-\u9FFF]{2,5})/;
+        if(!regName.test(empName)){
+//            alert("用户名可以是2-5位中文或者6-16位英文和数字的组合");
+            show_validate_msg("#emp_add_input","error","用户名可以是2-5位中文或者6-16位英文和数字的组合")
+            return false;
+        }else {
+            show_validate_msg("#emp_add_input","success","");
+        };
+
+        //校验邮箱信息
+        var email = $("#email_add_input").val();
+        var regEmail = /^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$/;
+        if (!regEmail.test(email)) {
+//            alert("邮箱格式不正确");
+            show_validate_msg("#email_add_input","error","邮箱格式不正确");
+            return false;
+        }else {
+            show_validate_msg("#email_add_input","success","");
+        }
+        return true;
+    }
+    //显示校验结果的提示信息
+    function show_validate_msg(ele,status,msg) {
+        //清除当前元素的校验状态
+        $(ele).parent().removeClass("has-success has-error");
+        $(ele).next("span").text("");
+        if ("success"==status) {
+            $(ele).parent().addClass("has-success");
+            $(ele).next("span").text(msg);
+        }else if ("error"==status){
+            $(ele).parent().addClass("has-error");
+            $(ele).next("span").text(msg);
+        }
+    }
+    $("#emp_add_input").change(function () {
+       //发送ajax请求 校验用户名是否存在
+        var empName = this.value;
+        $.ajax({
+            url:"${APP_PATH}/checkuser",
+            data:"empName="+empName,
+            type:"POST",
+            success:function (result) {
+                //100 表示成功
+                if (result.code==100){
+                    show_validate_msg("#emp_add_input","success","用户名可用");
+                    $("#emp_save_btn").attr("ajax-var","success");
+                }else {
+                    show_validate_msg("#emp_add_input","error",result.extend.va_msg);
+                    $("#emp_save_btn").attr("ajax-var","error");
+
+                }
+            }
+        });
+    });
+    $("#emp_save_btn").click(function () {
+//        alert($("#empAddModal form").serialize());
+        //数据校验
+        if(!validate_add_form()){
+            return false;
+        }
+        if ($(this).attr("ajax-var")=="error"){
+            return false;
+        }
+        //保存员工信息
+        $.ajax({
+            url:"${APP_PATH}/emp",
+            type:"POST",
+            data:$("#empAddModal form").serialize(),
+            success:function (result) {
+                //关闭模态框
+                $("#empAddModal").modal('hide');
+                //请求显示最后一页
+                to_page(totalRecord);
+            }
+        });
+    });
 
 </script>
 </body>
