@@ -37,9 +37,7 @@
                     <div class="form-group">
                         <label class="col-sm-2 control-label">empName</label>
                         <div class="col-sm-10">
-                            <input type="text" name="empName" class="form-control" id="emp_edit_input"
-                                   placeholder="empName">
-                            <span class="help-block"></span>
+                            <p class="form-control-static" id="empName_edit_static"></p>
                         </div>
                     </div>
                     <div class="form-group">
@@ -64,7 +62,7 @@
                     <div class="form-group">
                         <label class="col-sm-2 control-label">deptName</label>
                         <div class="col-sm-4">
-                            <select class="form-control" name="dId" id="dept_add_select">
+                            <select class="form-control" name="dId" id="dept_edit_select">
                             </select>
                         </div>
                     </div>
@@ -149,7 +147,7 @@
     <div class="row">
         <div class="col-md-4 col-md-offset-8">
             <button class="btn-primary" id="emp_add_modal_btn">新增</button>
-            <button class="btn-danger">删除</button>
+            <button class="btn-danger" id="emp_del_modal_btn">删除</button>
         </div>
     </div>
     <!--显示表格数据-->
@@ -158,6 +156,9 @@
             <table class="table table-hover" id="emps_table">
                 <thead>
                 <tr>
+                    <th>
+                        <input type="checkbox" id="check_all">
+                    </th>
                     <th>#</th>
                     <th>empName</th>
                     <th>gender</th>
@@ -186,7 +187,7 @@
     </div>
 </div>
 <script type="text/javascript">
-    var totalRecord;
+    var totalRecord, currentPage;
     $(function () {
         //首页
         to_page(1);
@@ -214,6 +215,7 @@
         $("#emps_table tbody").empty();
         var emps = result.extend.pageInfo.list;
         $.each(emps, function (index, item) {
+            var checkBoxTd = $("<td><input type='checkbox' class='check_item'/></td>");
             var empIdTd = $("<td></td>").append(item.empId);
             var empNameTd = $("<td></td>").append(item.empName);
             var genderTd = $("<td></td>").append(item.gender == "M" ? "男" : "女");
@@ -221,10 +223,14 @@
             var deptNameTd = $("<td></td>").append(item.department.deptName);
             var editBtn = $("<button></button>").addClass("btn btn-primary btn-sm edit_btn")
                 .append($("<span></span>").addClass("glyphicon glyphicon-pencil")).append("编辑");
+            //为编辑按钮添加自定义组件，表示当前员工id
+            editBtn.attr("edit-id", item.empId);
             var delBtn = $("<button></button>").addClass("btn-danger btn-sm delete_btn")
                 .append($("<span></span>").addClass("glyphicon glyphicon-trash")).append("删除");
+            //为删除按钮添加自定义组件，表示当前员工id
+            delBtn.attr("del-id", item.empId);
             var btnTd = $("<td></td>").append(editBtn).append(" ").append(delBtn);
-            $("<tr></tr>").append(empIdTd)
+            $("<tr></tr>").append(checkBoxTd).append(empIdTd)
                 .append(empNameTd).append(genderTd).append(emailTd).append(deptNameTd)
                 .append(btnTd)
                 .appendTo("#emps_table tbody");
@@ -237,6 +243,7 @@
             result.extend.pageInfo.pages + "页,总" +
             result.extend.pageInfo.total + "条记录");
         totalRecord = result.extend.pageInfo.total;
+        currentPage = result.extend.pageInfo.pageNum;
     }
 
     function build_page_nav(result) {
@@ -299,7 +306,7 @@
         //重置表单
         reset_form("#empAddModal form");
         //发送ajax请求 查出部门信息 显示在下拉列表中
-        getDepts();
+        getDepts("#empAddModal select");
 
         $("#empAddModal").modal({
             backdrop: "static"
@@ -307,7 +314,8 @@
     });
 
     //    查出部门信息 显示在下拉列表中
-    function getDepts() {
+    function getDepts(ele) {
+        $(ele).empty();
         $.ajax({
             url: "${APP_PATH}/depts",
             type: "GET",
@@ -316,7 +324,7 @@
 //                {"code":100,"msg":"处理成功！","extend":{"depts":[{"deptId":1,"deptName":"开发部"},{"deptId":2,"deptName":"测试部"}]}}
                 $.each(result.extend.depts, function () {
                     var optionEle = $("<option></option>").append(this.deptName).attr("value", this.deptId);
-                    optionEle.appendTo("#empAddModal select");
+                    optionEle.appendTo(ele);
                 });
 
             }
@@ -419,19 +427,123 @@
             }
         });
 
-//        $(".edit_btn").live(function () {
-//           alert("edit");
-//        });
-        //ajax加载完数据后再给元素绑定点击事件 1. 在创建按钮时绑定 2.使用on事件绑定
-//        $(document).on("click",".edit_btn",function(){
-//            console.log("test");
-//            alert("edit");
-//        });
-        $(function () {
-            $('body').on('click','.edit_btn',function(){
-                console.log($(this).html());
-            });
+    });
+    //    $(".edit_btn").live(function () {
+    //           alert("edit");
+    //        });
+    //ajax加载完数据后再给元素绑定点击事件 1. 在创建按钮时绑定 2.使用on事件绑定
+    //        $(document).on("click",".edit_btn",function(){
+    //            console.log("test");
+    //            alert("edit");
+    //        });
+
+    $(document).on('click', '.edit_btn', function () {
+        //查出员工信息 显示员工信息
+        getEmp($(this).attr("edit-id"));
+        //发送ajax请求 查出部门信息 显示在下拉列表中
+        getDepts("#empEditModal select");
+
+        //把员工id传递给模态框的更新按钮
+        $("#emp_edit_btn").attr("edit-id", $(this).attr("edit-id"));
+        $("#empEditModal").modal({
+            backdrop: "static"
+        })
+    });
+
+    function getEmp(id) {
+        $.ajax({
+            url: "${APP_PATH}/emp/" + id,
+            type: "GET",
+            success: function (result) {
+//                console.log(result);
+                var empData = result.extend.employee;
+                $("#empName_edit_static").text(empData.empName);
+                $("#email_edit_input").val(empData.email);
+                //单选按钮设置值
+                $("#empEditModal input[name=gender]").val([empData.gender]);
+                //下拉框设置值
+                $("#empEditModal select").val([empData.dId]);
+            }
         });
+    }
+
+    $("#emp_edit_btn").click(function () {
+        //校验邮箱是否合法
+        var email = $("#email_edit_input").val();
+        var regEmail = /^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$/;
+        if (!regEmail.test(email)) {
+//            alert("邮箱格式不正确");
+            show_validate_msg("#email_edit_input", "error", "邮箱格式不正确");
+            return false;
+        } else {
+            show_validate_msg("#email_edit_input", "success", "");
+        }
+
+        //发送ajax请求 保存员工信息
+        $.ajax({
+            url: "${APP_PATH}/emp/" + $(this).attr("edit-id"),
+            type: "PUT",
+            data: $("#empEditModal form").serialize(),
+            success: function (result) {
+//                alert(result.msg);
+                //关闭对话框
+                $("#empEditModal").modal("hide");
+                //回到本页面
+                to_page(currentPage);
+            }
+        });
+    });
+
+    $(document).on("click",".delete_btn",function () {
+        //弹出是否删除 取第二个td
+        var  empName = $(this).parents("tr").find("td:eq(2)").text();
+        var empId =$(this).attr("del-id");
+        if (confirm("确认删除【"+empName+"】吗？")){
+            $.ajax({
+               url:"${APP_PATH}/emp/"+empId,
+                type:"DELETE",
+                success:function (result) {
+                    alert(result.msg);
+                    //回到本页
+                    to_page(currentPage);
+                }
+            });
+        }
+    });
+    //全选 全不选
+    $("#check_all").click(function () {
+//        alert($(this).attr("checked"));
+        //attr("checked") 为undefined 因为是原生的
+        $(this).prop("checked");
+        $(".check_item").prop("checked",$(this).prop("checked"));
+    });
+    $(document).on("click",".check_item",function () {
+       //判断当前元素和所有元素是否相等
+        var flag = $(".check_item:checked").length==$(".check_item").length;
+        $("#check_all").prop("checked",flag);
+    });
+
+    //点击全部删除 就批量删除 id用短横杠-连接
+    $("#emp_del_modal_btn").click(function () {
+        var empNames= "";
+        var del_idstr= "";
+        $.each($(".check_item:checked"),function () {
+           empNames += $(this).parents("tr").find("td:eq(2)").text()+",";
+            del_idstr += $(this).parents("tr").find("td:eq(1)").text()+"-";
+        });
+        //去除最后一个逗号
+        empNames = empNames.substring(0,empNames.length-1);
+        del_idstr = del_idstr.substring(0,del_idstr.length-1);
+        if (confirm("确认删除【"+empNames+"】吗？")){
+            $.ajax({
+                url:"${APP_PATH}/emp/"+del_idstr,
+                type:"DELETE",
+                success:function (result) {
+                    alert(result.msg);
+                    to_page(currentPage);
+                }
+            });
+        }
     });
 
 </script>
